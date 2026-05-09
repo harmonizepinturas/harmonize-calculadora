@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1A9898" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Harmonize Calc" />
+  <title>Harmonize — Calculadora de Orçamento</title>
+  <link rel="manifest" href="./manifest.json" />
+
+  <!-- ╔══════════════════════════════════════════════╗ -->
+  <!-- ║  ALTERE A SENHA AQUI (linha ~30 do script)  ║ -->
+  <!-- ╚══════════════════════════════════════════════╝ -->
+
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:       #1B2D5E;
+      --navy-dark:  #0D1B3E;
+      --teal:       #1A9898;
+      --teal-dark:  #148080;
+      --gold:       #C8922A;
+      --gold-dark:  #A87720;
+      --bg:         #F4F7FB;
+      --card:       #FFFFFF;
+      --text:       #1B2D5E;
+      --muted:      #6B7897;
+      --border:     #DDE3EE;
+      --radius:     14px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Tela de Login ── */
+    #login-screen {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: linear-gradient(175deg, #0D1B3E 0%, #1B2D5E 50%, #0D1B3E 100%);
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 360px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 24px;
+      padding: 40px 32px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .login-logo {
+      width: 64px; height: 64px;
+      background: linear-gradient(135deg, var(--teal), var(--gold));
+      border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; font-weight: 900; color: white;
+      margin: 0 auto 20px;
+    }
+
+    .login-title {
+      text-align: center;
+      color: white;
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .login-sub {
+      text-align: center;
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+      margin-bottom: 32px;
+    }
+
+    .login-input {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1.5px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.08);
+      color: white;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 16px;
+      letter-spacing: 0.1em;
+    }
+
+    .login-input::placeholder { color: rgba(255,255,255,0.35); }
+    .login-input:focus { border-color: var(--teal); }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+      color: white;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(26,152,152,0.4);
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .login-btn:active { transform: scale(0.98); opacity: 0.9; }
+
+    .login-error {
+      text-align: center;
+      color: #F87171;
+      font-size: 13px;
+      margin-top: 12px;
+      min-height: 18px;
+    }
+
+    /* ── App ── */
+    #app-screen { display: none; }
+
+    .app-header {
+      background: linear-gradient(90deg, var(--navy-dark), var(--navy));
+      padding: 16px 20px;
+      padding-top: calc(16px + env(safe-area-inset-top));
+      display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 50;
+    }
+
+    .app-header-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--teal), var(--gold));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    .app-header-title { color: white; font-size: 16px; font-weight: 700; }
+    .app-header-sub   { color: rgba(255,255,255,0.5); font-size: 11px; }
+
+    .app-header-logout {
+      margin-left: auto;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      color: rgba(255,255,255,0.7);
+      font-size: 12px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+
+    .app-content {
+      padding: 20px 16px;
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+
+    /* ── Alíquota badge ── */
+    .aliquota-strip {
+      background: linear-gradient(135deg, rgba(26,152,152,0.08), rgba(27,45,94,0.05));
+      border: 1.5px solid rgba(26,152,152,0.25);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .aliquota-value {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--navy);
+      line-height: 1;
+    }
+
+    .aliquota-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .sync-btn {
+      background: var(--teal);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s;
+    }
+
+    .sync-btn:active { opacity: 0.8; }
+    .sync-btn.syncing { opacity: 0.6; pointer-events: none; }
+
+    /* ── Form ── */
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    label span { font-weight: 400; color: var(--muted); }
+
+    input[type="number"], input[type="text"] {
+      width: 100%;
+      padding: 13px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: #FAFBFE;
+      font-size: 16px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      margin-bottom: 16px;
+      -webkit-appearance: none;
+    }
+
+    input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(26,152,152,0.15);
+    }
+
+    /* ── Selector quem fechou ── */
+    .socio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+
+    .socio-btn {
+      padding: 14px 10px;
+      border-radius: 12px;
+      border: 2px solid var(--border);
+      background: white;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .socio-btn.selected {
+      border-color: var(--teal);
+      background: rgba(26,152,152,0.06);
+    }
+
+    .socio-btn-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    .socio-btn-pct {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* ── Botão calcular ── */
+    .calc-btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+      color: white;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(200,146,42,0.35);
+      transition: transform 0.1s, opacity 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .calc-btn:active { transform: scale(0.98); opacity: 0.9; }
+
+    /* ── Resultado ── */
+    #resultado { display: none; }
+
+    .resultado-header {
+      background: linear-gradient(135deg, var(--navy), var(--teal));
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+      text-align: center;
+      color: white;
+    }
+
+    .resultado-header h3 {
+      font-size: 13px;
+      opacity: 0.7;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+
+    .resultado-bruto { font-size: 32px; font-weight: 900; }
+
+    .breakdown {
+      background: var(--card);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .breakdown-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    .breakdown-row:last-child { border-bottom: none; }
+    .breakdown-row .label-bd { color: var(--muted); }
+    .breakdown-row .value-bd { font-weight: 600; }
+    .breakdown-row .value-bd.negativo { color: #EF4444; }
+    .breakdown-row.total { background: rgba(26,152,152,0.06); }
+    .breakdown-row.total .label-bd { font-weight: 700; color: var(--text); }
+    .breakdown-row.total .value-bd { color: var(--teal); font-size: 16px; font-weight: 800; }
+
+    .socios-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .socio-result {
+      border-radius: var(--radius);
+      padding: 20px 16px;
+      text-align: center;
+    }
+
+    .socio-result.layla   { background: linear-gradient(135deg, var(--navy), #243d73); }
+    .socio-result.adriano { background: linear-gradient(135deg, var(--teal), var(--teal-dark)); }
+
+    .socio-result-name {
+      color: rgba(255,255,255,0.7);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+
+    .socio-result-pct {
+      color: rgba(255,255,255,0.55);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .socio-result-value {
+      color: white;
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .btn-novo {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: 2px solid var(--border);
+      background: white;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── Configurações ── */
+    #settings-panel {
+      display: none;
+      padding: 16px;
+      padding-bottom: 32px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .settings-input {
+      width: 100%;
+      padding: 13px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: #FAFBFE;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 12px;
+      word-break: break-all;
+    }
+
+    .settings-input:focus { border-color: var(--teal); }
+
+    .settings-save-btn {
+      padding: 12px 20px;
+      border-radius: 10px;
+      border: none;
+      background: var(--teal);
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* ── Nav bottom ── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0; right: 0;
+      background: white;
+      border-top: 1px solid var(--border);
+      display: flex;
+      padding-bottom: env(safe-area-inset-bottom);
+      z-index: 100;
+    }
+
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 0;
+      cursor: pointer;
+      border: none;
+      background: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .nav-btn svg { width: 22px; height: 22px; }
+    .nav-btn span { font-size: 11px; font-weight: 600; margin-top: 3px; color: var(--muted); }
+    .nav-btn.active span { color: var(--teal); }
+    .nav-btn.active svg { color: var(--teal); }
+
+    /* ── Offline badge ── */
+    .offline-badge {
+      display: none;
+      background: #FEF3C7;
+      border: 1px solid #FCD34D;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #92400E;
+      margin-bottom: 12px;
+    }
+
+    body.offline .offline-badge { display: block; }
+
+    /* ── Misc ── */
+    .hidden { display: none !important; }
+
+    .mt-0 { margin-bottom: 0 !important; }
+
+    @media (prefers-color-scheme: dark) {
+      /* versão light forçada — app usa light por design da marca */
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- TELA DE LOGIN                                               -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">H</div>
+    <p class="login-title">Harmonize Pinturas</p>
+    <p class="login-sub">Calculadora de Orçamento · Acesso privado</p>
+
+    <input
+      type="password"
+      id="senha-input"
+      class="login-input"
+      placeholder="Digite a senha..."
+      autocomplete="current-password"
+    />
+
+    <button class="login-btn" onclick="fazerLogin()">Entrar</button>
+    <p class="login-error" id="login-erro"></p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- APP (visível após login)                                    -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div id="app-screen">
+
+  <!-- Header -->
+  <div class="app-header">
+    <div class="app-header-icon">🎨</div>
+    <div>
+      <div class="app-header-title">Harmonize</div>
+      <div class="app-header-sub">Calculadora de Orçamento</div>
+    </div>
+    <button class="app-header-logout" onclick="sair()">Sair</button>
+  </div>
+
+  <!-- ─── Tela: Calculadora ─── -->
+  <div id="tela-calc" class="app-content" style="padding-bottom: 96px;">
+
+    <!-- Offline badge -->
+    <div class="offline-badge">
+      📴 Sem conexão — usando alíquota salva em cache
+    </div>
+
+    <!-- Alíquota atual -->
+    <div class="aliquota-strip">
+      <div>
+        <div class="card-title" style="margin-bottom:6px;">Alíquota Efetiva Atual</div>
+        <div class="aliquota-value" id="aliquota-display">7,30%</div>
+        <div class="aliquota-label" id="aliquota-data">Simples Nacional — Anexo III</div>
+      </div>
+      <button class="sync-btn" id="sync-btn" onclick="buscarAliquota()">↻ Sync</button>
+    </div>
+
+    <!-- Formulário -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:16px;">Dados da Obra</div>
+
+      <!-- Valor bruto -->
+      <label>Valor Bruto da Obra (R$)</label>
+      <input type="number" id="valor-bruto" placeholder="Ex.: 15000" min="0" step="0.01" />
+
+      <!-- Quem fechou -->
+      <label>Quem fechou o contrato?</label>
+      <div class="socio-grid">
+        <button class="socio-btn selected" id="btn-adriano" onclick="selecionarSocio('adriano')">
+          <div class="socio-btn-name">Adriano</div>
+          <div class="socio-btn-pct">Adriano 65% · Layla 35%</div>
+        </button>
+        <button class="socio-btn" id="btn-layla" onclick="selecionarSocio('layla')">
+          <div class="socio-btn-name">Layla</div>
+          <div class="socio-btn-pct">Layla 40% · Adriano 60%</div>
+        </button>
+      </div>
+
+      <!-- Terceiros -->
+      <label>Terceiros (R$) <span>— opcional</span></label>
+      <input type="number" id="terceiros" placeholder="0" min="0" step="0.01" class="mt-0" />
+
+      <!-- Erro -->
+      <p id="form-erro" style="color:#EF4444; font-size:13px; margin-bottom:12px; min-height:18px;"></p>
+
+      <!-- Calcular -->
+      <button class="calc-btn" onclick="calcular()">⚡ Calcular Divisão</button>
+    </div>
+
+  </div>
+
+  <!-- ─── Tela: Resultado ─── -->
+  <div id="tela-resultado" class="app-content hidden" style="padding-bottom: 96px;">
+
+    <div class="resultado-header">
+      <h3>Valor bruto da obra</h3>
+      <div class="resultado-bruto" id="res-bruto">R$ 0,00</div>
+      <div style="opacity:0.6; font-size:12px; margin-top:6px;">
+        Fechado por <span id="res-socio-fechou" style="font-weight:700;"></span>
+      </div>
+    </div>
+
+    <!-- Breakdown -->
+    <div class="breakdown">
+      <div class="breakdown-row">
+        <span class="label-bd">Valor bruto</span>
+        <span class="value-bd" id="rb-bruto">—</span>
+      </div>
+      <div class="breakdown-row">
+        <span class="label-bd" id="rb-imposto-label">Imposto (—%)</span>
+        <span class="value-bd negativo" id="rb-imposto">—</span>
+      </div>
+      <div class="breakdown-row">
+        <span class="label-bd">Ajuda de custo / gasolina</span>
+        <span class="value-bd negativo">− R$ 600,00</span>
+      </div>
+      <div class="breakdown-row" id="row-terceiros">
+        <span class="label-bd">Terceiros</span>
+        <span class="value-bd negativo" id="rb-terceiros">—</span>
+      </div>
+      <div class="breakdown-row">
+        <span class="label-bd">Reserva caixa da empresa (10%)</span>
+        <span class="value-bd negativo" id="rb-caixa">—</span>
+      </div>
+      <div class="breakdown-row total">
+        <span class="label-bd">Valor líquido a dividir</span>
+        <span class="value-bd" id="rb-liquido">—</span>
+      </div>
+    </div>
+
+    <!-- Sócios -->
+    <div class="socios-grid">
+      <div class="socio-result layla">
+        <div class="socio-result-name">Layla</div>
+        <div class="socio-result-pct" id="res-pct-layla">35%</div>
+        <div class="socio-result-value" id="res-layla">—</div>
+      </div>
+      <div class="socio-result adriano">
+        <div class="socio-result-name">Adriano</div>
+        <div class="socio-result-pct" id="res-pct-adriano">65%</div>
+        <div class="socio-result-value" id="res-adriano">—</div>
+      </div>
+    </div>
+
+    <button class="btn-novo" onclick="novoCalculo()">← Novo cálculo</button>
+
+  </div>
+
+  <!-- ─── Tela: Configurações ─── -->
+  <div id="settings-panel" style="display:none; padding: 20px 16px 96px;">
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:16px;">🔗 Conexão com Google Sheets</div>
+
+      <label>URL do Google Apps Script</label>
+      <textarea
+        id="sheets-url-input"
+        class="settings-input"
+        rows="3"
+        placeholder="Cole aqui a URL do seu Google Apps Script Web App (começa com https://script.google.com/...)"
+        style="resize:none; font-size:12px; padding:12px;"
+      ></textarea>
+
+      <button class="settings-save-btn" onclick="salvarSheetsUrl()">
+        Salvar URL
+      </button>
+      <p id="settings-msg" style="font-size:12px; color: var(--teal); margin-top:8px; min-height:16px;"></p>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px;">🔒 Alterar Senha</div>
+      <p style="font-size:13px; color: var(--muted); line-height:1.5;">
+        A senha atual está definida no código do arquivo <strong>index.html</strong>.
+        Para alterá-la, abra o arquivo em um editor de texto e procure a linha:<br/>
+        <code style="background:#EEF2FF; padding:2px 6px; border-radius:4px; font-size:12px;">
+          const SENHA_ACESSO = 'harmonize2026';
+        </code><br/>
+        Substitua o valor entre aspas pela nova senha desejada.
+      </p>
+    </div>
+
+  </div>
+
+  <!-- ─── Navegação inferior ─── -->
+  <div class="bottom-nav">
+    <button class="nav-btn active" id="nav-calc" onclick="mostrarTela('calc')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/>
+        <line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="17" x2="12" y2="17"/>
+      </svg>
+      <span>Calcular</span>
+    </button>
+    <button class="nav-btn" id="nav-settings" onclick="mostrarTela('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+        <path d="M12 2v2m0 16v2M2 12h2m16 0h2"/>
+      </svg>
+      <span>Config</span>
+    </button>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SCRIPT                                                      -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║  SENHA DE ACESSO — altere aqui para personalizar        ║
+// ╚══════════════════════════════════════════════════════════╝
+const SENHA_ACESSO = 'harmonize2026';
+
+// ── Constantes da empresa ────────────────────────────────────
+const AJUDA_CUSTO       = 600;
+const RESERVA_CAIXA_PCT = 0.10;
+const ALIQUOTA_DEFAULT  = 0.073; // 7,30% — padrão do contador
+
+const DIVISAO = {
+  adriano: { layla: 0.35, adriano: 0.65 },
+  layla:   { layla: 0.40, adriano: 0.60 },
+};
+
+// ── Estado ───────────────────────────────────────────────────
+let logado     = false;
+let socioSel   = 'adriano';
+let aliquota   = ALIQUOTA_DEFAULT;
+
+// ── Formatadores ─────────────────────────────────────────────
+function fmt(v) {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+function fmtPct(v) {
+  return (v * 100).toFixed(2).replace('.', ',') + '%';
+}
+
+// ── Login ────────────────────────────────────────────────────
+function fazerLogin() {
+  const input = document.getElementById('senha-input').value;
+  if (input === SENHA_ACESSO) {
+    logado = true;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display   = 'block';
+    inicializarApp();
+  } else {
+    document.getElementById('login-erro').textContent = 'Senha incorreta. Tente novamente.';
+    document.getElementById('senha-input').value = '';
+  }
+}
+
+document.getElementById('senha-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') fazerLogin();
+});
+
+function sair() {
+  logado = false;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app-screen').style.display   = 'none';
+  document.getElementById('senha-input').value = '';
+  document.getElementById('login-erro').textContent = '';
+}
+
+// ── Inicialização ─────────────────────────────────────────────
+function inicializarApp() {
+  // Carrega alíquota do cache
+  const cached = localStorage.getItem('harmonize-aliquota');
+  if (cached) {
+    aliquota = parseFloat(cached);
+    atualizarDisplayAliquota();
+  }
+
+  // Carrega URL do Sheets salva
+  const url = localStorage.getItem('harmonize-sheets-url') || '';
+  document.getElementById('sheets-url-input').value = url;
+
+  // Tenta buscar alíquota atualizada do Sheets
+  buscarAliquota();
+
+  // Registrar service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(console.warn);
+  }
+}
+
+// ── Atualiza o display da alíquota ────────────────────────────
+function atualizarDisplayAliquota() {
+  document.getElementById('aliquota-display').textContent = fmtPct(aliquota);
+  const upd = localStorage.getItem('harmonize-aliquota-updated');
+  if (upd) {
+    const d = new Date(upd);
+    document.getElementById('aliquota-data').textContent =
+      'Atualizada em ' + d.toLocaleDateString('pt-BR') + ' às ' +
+      d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  } else {
+    document.getElementById('aliquota-data').textContent = 'Simples Nacional — Anexo III · Padrão do contador';
+  }
+}
+
+// ── Busca alíquota do Google Sheets ──────────────────────────
+async function buscarAliquota() {
+  const url = localStorage.getItem('harmonize-sheets-url');
+  if (!url) return;
+
+  const btn = document.getElementById('sync-btn');
+  btn.textContent = '...';
+  btn.classList.add('syncing');
+
+  try {
+    const res  = await fetch(url + '?action=get', { signal: AbortSignal.timeout(8000) });
+    const data = await res.json();
+
+    if (data && data.aliquota) {
+      aliquota = parseFloat(data.aliquota);
+      localStorage.setItem('harmonize-aliquota', String(aliquota));
+      localStorage.setItem('harmonize-aliquota-updated', new Date().toISOString());
+      atualizarDisplayAliquota();
+      btn.textContent = '✓ Ok';
+      setTimeout(() => { btn.textContent = '↻ Sync'; btn.classList.remove('syncing'); }, 2000);
+    } else {
+      throw new Error('Formato inválido');
+    }
+  } catch {
+    btn.textContent = '↻ Sync';
+    btn.classList.remove('syncing');
+    // Usa cache silenciosamente
+  }
+}
+
+// ── Seleção de sócio ─────────────────────────────────────────
+function selecionarSocio(socio) {
+  socioSel = socio;
+  document.getElementById('btn-adriano').className = 'socio-btn' + (socio === 'adriano' ? ' selected' : '');
+  document.getElementById('btn-layla').className   = 'socio-btn' + (socio === 'layla'   ? ' selected' : '');
+}
+
+// ── Cálculo ──────────────────────────────────────────────────
+function calcular() {
+  document.getElementById('form-erro').textContent = '';
+
+  const bruto     = parseFloat(document.getElementById('valor-bruto').value);
+  const terceiros = parseFloat(document.getElementById('terceiros').value) || 0;
+
+  if (isNaN(bruto) || bruto <= 0) {
+    document.getElementById('form-erro').textContent = 'Informe o valor bruto da obra.';
+    return;
+  }
+
+  const imposto = bruto * aliquota;
+  const ajuda   = AJUDA_CUSTO;
+  const caixa   = bruto * RESERVA_CAIXA_PCT;
+  const liquido = Math.max(0, bruto - imposto - ajuda - terceiros - caixa);
+
+  const div     = DIVISAO[socioSel];
+  const layla   = liquido * div.layla;
+  const adriano = liquido * div.adriano;
+
+  // Preenche resultado
+  const socioNome = socioSel === 'adriano' ? 'Adriano' : 'Layla';
+
+  document.getElementById('res-bruto').textContent       = fmt(bruto);
+  document.getElementById('res-socio-fechou').textContent = socioNome;
+  document.getElementById('rb-bruto').textContent        = fmt(bruto);
+  document.getElementById('rb-imposto-label').textContent = `Imposto (${fmtPct(aliquota)} sobre o bruto)`;
+  document.getElementById('rb-imposto').textContent      = '− ' + fmt(imposto);
+  document.getElementById('rb-caixa').textContent        = '− ' + fmt(caixa);
+  document.getElementById('rb-liquido').textContent      = fmt(liquido);
+
+  const rowTerc = document.getElementById('row-terceiros');
+  if (terceiros > 0) {
+    document.getElementById('rb-terceiros').textContent = '− ' + fmt(terceiros);
+    rowTerc.style.display = '';
+  } else {
+    rowTerc.style.display = 'none';
+  }
+
+  document.getElementById('res-pct-layla').textContent   = fmtPct(div.layla) + ' do líquido';
+  document.getElementById('res-pct-adriano').textContent = fmtPct(div.adriano) + ' do líquido';
+  document.getElementById('res-layla').textContent       = fmt(layla);
+  document.getElementById('res-adriano').textContent     = fmt(adriano);
+
+  // Mostra tela de resultado
+  document.getElementById('tela-calc').classList.add('hidden');
+  document.getElementById('tela-resultado').classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function novoCalculo() {
+  document.getElementById('tela-resultado').classList.add('hidden');
+  document.getElementById('tela-calc').classList.remove('hidden');
+}
+
+// ── Navegação ────────────────────────────────────────────────
+function mostrarTela(tela) {
+  // Reseta telas
+  document.getElementById('tela-calc').classList.remove('hidden');
+  document.getElementById('tela-resultado').classList.add('hidden');
+  document.getElementById('settings-panel').style.display = 'none';
+
+  document.getElementById('nav-calc').classList.remove('active');
+  document.getElementById('nav-settings').classList.remove('active');
+
+  if (tela === 'calc') {
+    document.getElementById('tela-calc').classList.remove('hidden');
+    document.getElementById('nav-calc').classList.add('active');
+  } else {
+    document.getElementById('tela-calc').classList.add('hidden');
+    document.getElementById('settings-panel').style.display = 'block';
+    document.getElementById('nav-settings').classList.add('active');
+  }
+
+  window.scrollTo({ top: 0 });
+}
+
+// ── Google Sheets URL ────────────────────────────────────────
+function salvarSheetsUrl() {
+  const url = document.getElementById('sheets-url-input').value.trim();
+  localStorage.setItem('harmonize-sheets-url', url);
+  document.getElementById('settings-msg').textContent = '✓ URL salva com sucesso!';
+  setTimeout(() => { document.getElementById('settings-msg').textContent = ''; }, 2500);
+  if (url) buscarAliquota();
+}
+
+// ── Detector offline ─────────────────────────────────────────
+window.addEventListener('online',  () => document.body.classList.remove('offline'));
+window.addEventListener('offline', () => document.body.classList.add('offline'));
+if (!navigator.onLine) document.body.classList.add('offline');
+</script>
+
+</body>
+</html>
