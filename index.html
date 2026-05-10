@@ -130,7 +130,7 @@
     }
 
     /* ── App ── */
-    #app-screen { display: none; }
+    #app-screen { display: block; }
 
     .app-header {
       background: linear-gradient(90deg, var(--navy-dark), var(--navy));
@@ -501,29 +501,7 @@
 <body>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
-<!-- TELA DE LOGIN                                               -->
-<!-- ═══════════════════════════════════════════════════════════ -->
-<div id="login-screen">
-  <div class="login-card">
-    <div class="login-logo">H</div>
-    <p class="login-title">Harmonize Pinturas</p>
-    <p class="login-sub">Calculadora de Orçamento · Acesso privado</p>
-
-    <input
-      type="password"
-      id="senha-input"
-      class="login-input"
-      placeholder="Digite a senha..."
-      autocomplete="current-password"
-    />
-
-    <button class="login-btn" onclick="fazerLogin()">Entrar</button>
-    <p class="login-error" id="login-erro"></p>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════ -->
-<!-- APP (visível após login)                                    -->
+<!-- APP                                                          -->
 <!-- ═══════════════════════════════════════════════════════════ -->
 <div id="app-screen">
 
@@ -534,7 +512,6 @@
       <div class="app-header-title">Harmonize</div>
       <div class="app-header-sub">Calculadora de Orçamento</div>
     </div>
-    <button class="app-header-logout" onclick="sair()">Sair</button>
   </div>
 
   <!-- ─── Tela: Calculadora ─── -->
@@ -676,17 +653,6 @@
       <p id="settings-msg" style="font-size:12px; color: var(--teal); margin-top:8px; min-height:16px;"></p>
     </div>
 
-    <div class="card">
-      <div class="card-title" style="margin-bottom:8px;">🔒 Alterar Senha</div>
-      <p style="font-size:13px; color: var(--muted); line-height:1.5;">
-        A senha atual está definida no código do arquivo <strong>index.html</strong>.
-        Para alterá-la, abra o arquivo em um editor de texto e procure a linha:<br/>
-        <code style="background:#EEF2FF; padding:2px 6px; border-radius:4px; font-size:12px;">
-          const SENHA_ACESSO = 'harmonize2026';
-        </code><br/>
-        Substitua o valor entre aspas pela nova senha desejada.
-      </p>
-    </div>
 
   </div>
 
@@ -716,10 +682,6 @@
 <script>
 'use strict';
 
-// ╔══════════════════════════════════════════════════════════╗
-// ║  SENHA DE ACESSO — altere aqui para personalizar        ║
-// ╚══════════════════════════════════════════════════════════╝
-const SENHA_ACESSO = 'harmonize2026';
 
 // ── Constantes da empresa ────────────────────────────────────
 const AJUDA_CUSTO       = 600;
@@ -762,7 +724,6 @@ function calcularFaixaAliquota(rbt12) {
 }
 
 // ── Estado ───────────────────────────────────────────────────
-let logado      = false;
 let socioSel    = 'adriano';
 let rbt12Base   = 0;                // RBT12 das notas fiscais (vindo do ERP ou Sheets)
 let aliquota    = ALIQUOTA_DEFAULT; // alíquota base (sem simulação de obra)
@@ -774,32 +735,6 @@ function fmt(v) {
 }
 function fmtPct(v) {
   return (v * 100).toFixed(2).replace('.', ',') + '%';
-}
-
-// ── Login ────────────────────────────────────────────────────
-function fazerLogin() {
-  const input = document.getElementById('senha-input').value;
-  if (input === SENHA_ACESSO) {
-    logado = true;
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display   = 'block';
-    inicializarApp();
-  } else {
-    document.getElementById('login-erro').textContent = 'Senha incorreta. Tente novamente.';
-    document.getElementById('senha-input').value = '';
-  }
-}
-
-document.getElementById('senha-input').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') fazerLogin();
-});
-
-function sair() {
-  logado = false;
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('app-screen').style.display   = 'none';
-  document.getElementById('senha-input').value = '';
-  document.getElementById('login-erro').textContent = '';
 }
 
 // ── Inicialização ─────────────────────────────────────────────
@@ -1032,6 +967,9 @@ function salvarSheetsUrl() {
 window.addEventListener('online',  () => document.body.classList.remove('offline'));
 window.addEventListener('offline', () => document.body.classList.add('offline'));
 if (!navigator.onLine) document.body.classList.add('offline');
+
+// ── Inicia direto, sem login ──────────────────────────────────
+inicializarApp();
 </script>
 
 </body>
