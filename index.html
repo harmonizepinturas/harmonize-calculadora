@@ -750,8 +750,9 @@ function inicializarApp() {
   const url = localStorage.getItem('harmonize-sheets-url') || '';
   document.getElementById('sheets-url-input').value = url;
 
-  // Tenta buscar dados atualizados do Sheets
+  // Busca dados atualizados do Sheets ao abrir e a cada 5 minutos
   buscarAliquota();
+  setInterval(buscarAliquota, 5 * 60 * 1000);
 
   // Projeção dinâmica conforme o usuário digita
   document.getElementById('valor-bruto').addEventListener('input', atualizarAliquotaProjetada);
@@ -793,8 +794,8 @@ function atualizarDisplayAliquota() {
 function atualizarAliquotaProjetada() {
   const valorBruto = parseFloat(document.getElementById('valor-bruto').value) || 0;
 
-  if (valorBruto <= 0) {
-    // Sem valor digitado: volta ao estado base
+  if (valorBruto <= 0 || rbt12Base === 0) {
+    // Sem valor OU sem RBT12 disponível: usa alíquota sincronizada
     aliquotaSim = aliquota;
     atualizarDisplayAliquota();
     return;
