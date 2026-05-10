@@ -3,7 +3,7 @@
 // Estratégia: Cache-first para assets, Network-first para dados
 // ============================================================
 
-const CACHE_NAME   = 'harmonize-calc-v1';
+const CACHE_NAME   = 'harmonize-calc-v3';
 const CACHE_ASSETS = [
   './',
   './index.html',
