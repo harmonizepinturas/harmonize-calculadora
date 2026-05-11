@@ -766,14 +766,12 @@ function inicializarApp() {
   }
 }
 
-// ── Recalcula alíquota base a partir do RBT12 ────────────────
+// ── Recalcula alíquota base — sempre usa o valor do Sheets ───
+// rbt12Base é usado APENAS para projeção ao digitar valor bruto.
 function recalcularBase() {
-  if (rbt12Base > 0) {
-    aliquota = calcularFaixaAliquota(rbt12Base).aliquotaEfetiva;
-  } else {
-    const cached = localStorage.getItem('harmonize-aliquota');
-    aliquota = cached ? parseFloat(cached) : ALIQUOTA_DEFAULT;
-  }
+  const raw    = localStorage.getItem('harmonize-aliquota');
+  const parsed = parseFloat(raw);
+  aliquota    = (!isNaN(parsed) && parsed > 0 && parsed < 1) ? parsed : ALIQUOTA_DEFAULT;
   aliquotaSim = aliquota;
 }
 
