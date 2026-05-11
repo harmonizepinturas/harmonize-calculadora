@@ -130,7 +130,7 @@
     }
 
     /* ── App ── */
-    #app-screen { display: none; }
+    #app-screen { display: block; }
 
     .app-header {
       background: linear-gradient(90deg, var(--navy-dark), var(--navy));
@@ -501,29 +501,7 @@
 <body>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
-<!-- TELA DE LOGIN                                               -->
-<!-- ═══════════════════════════════════════════════════════════ -->
-<div id="login-screen">
-  <div class="login-card">
-    <div class="login-logo">H</div>
-    <p class="login-title">Harmonize Pinturas</p>
-    <p class="login-sub">Calculadora de Orçamento · Acesso privado</p>
-
-    <input
-      type="password"
-      id="senha-input"
-      class="login-input"
-      placeholder="Digite a senha..."
-      autocomplete="current-password"
-    />
-
-    <button class="login-btn" onclick="fazerLogin()">Entrar</button>
-    <p class="login-error" id="login-erro"></p>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════ -->
-<!-- APP (visível após login)                                    -->
+<!-- APP                                                          -->
 <!-- ═══════════════════════════════════════════════════════════ -->
 <div id="app-screen">
 
@@ -534,7 +512,6 @@
       <div class="app-header-title">Harmonize</div>
       <div class="app-header-sub">Calculadora de Orçamento</div>
     </div>
-    <button class="app-header-logout" onclick="sair()">Sair</button>
   </div>
 
   <!-- ─── Tela: Calculadora ─── -->
@@ -545,14 +522,23 @@
       📴 Sem conexão — usando alíquota salva em cache
     </div>
 
-    <!-- Alíquota atual -->
+    <!-- Alíquota projetada -->
     <div class="aliquota-strip">
-      <div>
-        <div class="card-title" style="margin-bottom:6px;">Alíquota Efetiva Atual</div>
+      <div style="flex:1;">
+        <div class="card-title" style="margin-bottom:6px;">Alíquota p/ esta obra</div>
         <div class="aliquota-value" id="aliquota-display">7,30%</div>
         <div class="aliquota-label" id="aliquota-data">Simples Nacional — Anexo III</div>
+        <div id="rbt12-info" style="display:none; font-size:11px; color:var(--muted); margin-top:5px; line-height:1.6;">
+          RBT12 atual: <span id="rbt12-base-fmt" style="font-weight:600;">R$ 0</span><br/>
+          + esta obra → <span id="rbt12-proj-fmt" style="font-weight:700; color:var(--navy);">R$ 0</span>
+        </div>
       </div>
       <button class="sync-btn" id="sync-btn" onclick="buscarAliquota()">↻ Sync</button>
+    </div>
+
+    <!-- Aviso de mudança de faixa -->
+    <div id="aviso-faixa" class="hidden" style="background:#FEF9C3; border:1px solid #FCD34D; border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:13px; color:#78350F; line-height:1.5;">
+      ⚠️ <strong>Atenção:</strong> Com este valor, sua faixa do Simples Nacional muda para <strong id="aviso-faixa-num">Faixa 2</strong>. A alíquota acima já reflete isso.
     </div>
 
     <!-- Formulário -->
@@ -667,17 +653,6 @@
       <p id="settings-msg" style="font-size:12px; color: var(--teal); margin-top:8px; min-height:16px;"></p>
     </div>
 
-    <div class="card">
-      <div class="card-title" style="margin-bottom:8px;">🔒 Alterar Senha</div>
-      <p style="font-size:13px; color: var(--muted); line-height:1.5;">
-        A senha atual está definida no código do arquivo <strong>index.html</strong>.
-        Para alterá-la, abra o arquivo em um editor de texto e procure a linha:<br/>
-        <code style="background:#EEF2FF; padding:2px 6px; border-radius:4px; font-size:12px;">
-          const SENHA_ACESSO = 'harmonize2026';
-        </code><br/>
-        Substitua o valor entre aspas pela nova senha desejada.
-      </p>
-    </div>
 
   </div>
 
@@ -707,10 +682,9 @@
 <script>
 'use strict';
 
-// ╔══════════════════════════════════════════════════════════╗
-// ║  SENHA DE ACESSO — altere aqui para personalizar        ║
-// ╚══════════════════════════════════════════════════════════╝
-const SENHA_ACESSO = 'harmonize2026';
+
+// ── URL do Google Apps Script (fixa no código) ───────────────
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbznA-8GgSTIlzgO-YC7Y9M58tlAmJN8Nvy5hBcqeq43ILyjw_57pCLbqwrq5CQqXQFlhA/exec';
 
 // ── Constantes da empresa ────────────────────────────────────
 const AJUDA_CUSTO       = 600;
@@ -722,10 +696,41 @@ const DIVISAO = {
   layla:   { layla: 0.40, adriano: 0.60 },
 };
 
+// ── Tabela Simples Nacional Anexo III ────────────────────────
+const ANEXO_III_FAIXAS = [
+  { faixa: 1, limite:  180000, aliquota: 0.060, deducao:      0 },
+  { faixa: 2, limite:  360000, aliquota: 0.112, deducao:   9360 },
+  { faixa: 3, limite:  720000, aliquota: 0.135, deducao:  17640 },
+  { faixa: 4, limite: 1800000, aliquota: 0.160, deducao:  35640 },
+  { faixa: 5, limite: 3600000, aliquota: 0.210, deducao: 125640 },
+  { faixa: 6, limite: 4800000, aliquota: 0.330, deducao: 557640 },
+];
+
+// Fórmula: (RBT12 × % nominal − dedução) ÷ RBT12
+function calcularFaixaAliquota(rbt12) {
+  if (rbt12 === 0) return { faixa: 1, aliquotaEfetiva: ALIQUOTA_DEFAULT, isDefault: true };
+  for (const f of ANEXO_III_FAIXAS) {
+    if (rbt12 <= f.limite) {
+      return {
+        faixa: f.faixa,
+        aliquotaEfetiva: Math.max(0, (rbt12 * f.aliquota - f.deducao) / rbt12),
+        isDefault: false,
+      };
+    }
+  }
+  const u = ANEXO_III_FAIXAS[ANEXO_III_FAIXAS.length - 1];
+  return {
+    faixa: u.faixa,
+    aliquotaEfetiva: Math.max(0, (rbt12 * u.aliquota - u.deducao) / rbt12),
+    isDefault: false,
+  };
+}
+
 // ── Estado ───────────────────────────────────────────────────
-let logado     = false;
-let socioSel   = 'adriano';
-let aliquota   = ALIQUOTA_DEFAULT;
+let socioSel    = 'adriano';
+let rbt12Base   = 0;                // RBT12 das notas fiscais (vindo do ERP ou Sheets)
+let aliquota    = ALIQUOTA_DEFAULT; // alíquota base (sem simulação de obra)
+let aliquotaSim = ALIQUOTA_DEFAULT; // alíquota projetada — usada no cálculo final
 
 // ── Formatadores ─────────────────────────────────────────────
 function fmt(v) {
@@ -735,47 +740,25 @@ function fmtPct(v) {
   return (v * 100).toFixed(2).replace('.', ',') + '%';
 }
 
-// ── Login ────────────────────────────────────────────────────
-function fazerLogin() {
-  const input = document.getElementById('senha-input').value;
-  if (input === SENHA_ACESSO) {
-    logado = true;
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display   = 'block';
-    inicializarApp();
-  } else {
-    document.getElementById('login-erro').textContent = 'Senha incorreta. Tente novamente.';
-    document.getElementById('senha-input').value = '';
-  }
-}
-
-document.getElementById('senha-input').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') fazerLogin();
-});
-
-function sair() {
-  logado = false;
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('app-screen').style.display   = 'none';
-  document.getElementById('senha-input').value = '';
-  document.getElementById('login-erro').textContent = '';
-}
-
 // ── Inicialização ─────────────────────────────────────────────
 function inicializarApp() {
-  // Carrega alíquota do cache
-  const cached = localStorage.getItem('harmonize-aliquota');
-  if (cached) {
-    aliquota = parseFloat(cached);
-    atualizarDisplayAliquota();
-  }
+  // Carrega RBT12 salvo pelo ERP (harmonize-rbt12)
+  const cachedRbt12 = localStorage.getItem('harmonize-rbt12');
+  if (cachedRbt12) rbt12Base = parseFloat(cachedRbt12) || 0;
 
-  // Carrega URL do Sheets salva
-  const url = localStorage.getItem('harmonize-sheets-url') || '';
+  recalcularBase();
+  atualizarDisplayAliquota();
+
+  // Carrega URL do Sheets (localStorage ou padrão do código)
+  const url = localStorage.getItem('harmonize-sheets-url') || SHEETS_URL;
   document.getElementById('sheets-url-input').value = url;
 
-  // Tenta buscar alíquota atualizada do Sheets
+  // Busca dados atualizados do Sheets ao abrir e a cada 5 minutos
   buscarAliquota();
+  setInterval(buscarAliquota, 5 * 60 * 1000);
+
+  // Projeção dinâmica conforme o usuário digita
+  document.getElementById('valor-bruto').addEventListener('input', atualizarAliquotaProjetada);
 
   // Registrar service worker
   if ('serviceWorker' in navigator) {
@@ -783,9 +766,22 @@ function inicializarApp() {
   }
 }
 
-// ── Atualiza o display da alíquota ────────────────────────────
+// ── Recalcula alíquota base a partir do RBT12 ────────────────
+function recalcularBase() {
+  if (rbt12Base > 0) {
+    aliquota = calcularFaixaAliquota(rbt12Base).aliquotaEfetiva;
+  } else {
+    const cached = localStorage.getItem('harmonize-aliquota');
+    aliquota = cached ? parseFloat(cached) : ALIQUOTA_DEFAULT;
+  }
+  aliquotaSim = aliquota;
+}
+
+// ── Display da alíquota — estado base (sem simulação) ─────────
 function atualizarDisplayAliquota() {
   document.getElementById('aliquota-display').textContent = fmtPct(aliquota);
+  document.getElementById('rbt12-info').style.display = 'none';
+  document.getElementById('aviso-faixa').classList.add('hidden');
   const upd = localStorage.getItem('harmonize-aliquota-updated');
   if (upd) {
     const d = new Date(upd);
@@ -797,9 +793,50 @@ function atualizarDisplayAliquota() {
   }
 }
 
-// ── Busca alíquota do Google Sheets ──────────────────────────
+// ── Projeção dinâmica conforme valor bruto digitado ───────────
+function atualizarAliquotaProjetada() {
+  const valorBruto = parseFloat(document.getElementById('valor-bruto').value) || 0;
+
+  if (valorBruto <= 0 || rbt12Base === 0) {
+    // Sem valor OU sem RBT12 disponível: usa alíquota sincronizada
+    aliquotaSim = aliquota;
+    atualizarDisplayAliquota();
+    return;
+  }
+
+  const rbt12Proj = rbt12Base + valorBruto;
+  const taxBase   = calcularFaixaAliquota(rbt12Base);
+  const taxSim    = calcularFaixaAliquota(rbt12Proj);
+  aliquotaSim     = taxSim.aliquotaEfetiva;
+
+  // Atualiza display com alíquota projetada
+  document.getElementById('aliquota-display').textContent = fmtPct(aliquotaSim);
+  document.getElementById('aliquota-data').textContent    =
+    'Faixa ' + taxSim.faixa + ' — Simples Nacional Anexo III';
+
+  // Linha de RBT12 projetado (só mostra se já temos notas)
+  const rbt12InfoEl = document.getElementById('rbt12-info');
+  if (rbt12Base > 0) {
+    document.getElementById('rbt12-base-fmt').textContent = fmt(rbt12Base);
+    document.getElementById('rbt12-proj-fmt').textContent = fmt(rbt12Proj);
+    rbt12InfoEl.style.display = 'block';
+  } else {
+    rbt12InfoEl.style.display = 'none';
+  }
+
+  // Aviso de mudança de faixa
+  const avisoEl = document.getElementById('aviso-faixa');
+  if (taxSim.faixa !== taxBase.faixa) {
+    document.getElementById('aviso-faixa-num').textContent = 'Faixa ' + taxSim.faixa;
+    avisoEl.classList.remove('hidden');
+  } else {
+    avisoEl.classList.add('hidden');
+  }
+}
+
+// ── Busca dados do Google Sheets ──────────────────────────────
 async function buscarAliquota() {
-  const url = localStorage.getItem('harmonize-sheets-url');
+  const url = localStorage.getItem('harmonize-sheets-url') || SHEETS_URL;
   if (!url) return;
 
   const btn = document.getElementById('sync-btn');
@@ -810,15 +847,25 @@ async function buscarAliquota() {
     const res  = await fetch(url + '?action=get', { signal: AbortSignal.timeout(8000) });
     const data = await res.json();
 
-    if (data && data.aliquota) {
-      aliquota = parseFloat(data.aliquota);
-      localStorage.setItem('harmonize-aliquota', String(aliquota));
+    const aliquotaRecebida = parseFloat(data && data.aliquota);
+    if (!isNaN(aliquotaRecebida) && aliquotaRecebida > 0 && aliquotaRecebida < 1) {
+      // Alíquota válida — salva e aplica
+      if (data.rbt12 != null && !isNaN(parseFloat(data.rbt12))) {
+        rbt12Base = parseFloat(data.rbt12) || 0;
+        localStorage.setItem('harmonize-rbt12', String(rbt12Base));
+      }
+
+      localStorage.setItem('harmonize-aliquota',         String(aliquotaRecebida));
       localStorage.setItem('harmonize-aliquota-updated', new Date().toISOString());
+
+      recalcularBase();
       atualizarDisplayAliquota();
+      atualizarAliquotaProjetada();
+
       btn.textContent = '✓ Ok';
       setTimeout(() => { btn.textContent = '↻ Sync'; btn.classList.remove('syncing'); }, 2000);
     } else {
-      throw new Error('Formato inválido');
+      throw new Error('Alíquota inválida: ' + JSON.stringify(data));
     }
   } catch {
     btn.textContent = '↻ Sync';
@@ -846,7 +893,8 @@ function calcular() {
     return;
   }
 
-  const imposto = bruto * aliquota;
+  // Usa aliquotaSim — calculada com rbt12Base + bruto (projeção real)
+  const imposto = bruto * aliquotaSim;
   const ajuda   = AJUDA_CUSTO;
   const caixa   = bruto * RESERVA_CAIXA_PCT;
   const liquido = Math.max(0, bruto - imposto - ajuda - terceiros - caixa);
@@ -855,16 +903,15 @@ function calcular() {
   const layla   = liquido * div.layla;
   const adriano = liquido * div.adriano;
 
-  // Preenche resultado
   const socioNome = socioSel === 'adriano' ? 'Adriano' : 'Layla';
 
-  document.getElementById('res-bruto').textContent       = fmt(bruto);
+  document.getElementById('res-bruto').textContent        = fmt(bruto);
   document.getElementById('res-socio-fechou').textContent = socioNome;
-  document.getElementById('rb-bruto').textContent        = fmt(bruto);
-  document.getElementById('rb-imposto-label').textContent = `Imposto (${fmtPct(aliquota)} sobre o bruto)`;
-  document.getElementById('rb-imposto').textContent      = '− ' + fmt(imposto);
-  document.getElementById('rb-caixa').textContent        = '− ' + fmt(caixa);
-  document.getElementById('rb-liquido').textContent      = fmt(liquido);
+  document.getElementById('rb-bruto').textContent         = fmt(bruto);
+  document.getElementById('rb-imposto-label').textContent = `Imposto (${fmtPct(aliquotaSim)} sobre o bruto)`;
+  document.getElementById('rb-imposto').textContent       = '− ' + fmt(imposto);
+  document.getElementById('rb-caixa').textContent         = '− ' + fmt(caixa);
+  document.getElementById('rb-liquido').textContent       = fmt(liquido);
 
   const rowTerc = document.getElementById('row-terceiros');
   if (terceiros > 0) {
@@ -879,7 +926,6 @@ function calcular() {
   document.getElementById('res-layla').textContent       = fmt(layla);
   document.getElementById('res-adriano').textContent     = fmt(adriano);
 
-  // Mostra tela de resultado
   document.getElementById('tela-calc').classList.add('hidden');
   document.getElementById('tela-resultado').classList.remove('hidden');
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -892,7 +938,6 @@ function novoCalculo() {
 
 // ── Navegação ────────────────────────────────────────────────
 function mostrarTela(tela) {
-  // Reseta telas
   document.getElementById('tela-calc').classList.remove('hidden');
   document.getElementById('tela-resultado').classList.add('hidden');
   document.getElementById('settings-panel').style.display = 'none';
@@ -925,6 +970,9 @@ function salvarSheetsUrl() {
 window.addEventListener('online',  () => document.body.classList.remove('offline'));
 window.addEventListener('offline', () => document.body.classList.add('offline'));
 if (!navigator.onLine) document.body.classList.add('offline');
+
+// ── Inicia direto, sem login ──────────────────────────────────
+inicializarApp();
 </script>
 
 </body>
