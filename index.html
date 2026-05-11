@@ -753,9 +753,9 @@ function inicializarApp() {
   const url = localStorage.getItem('harmonize-sheets-url') || SHEETS_URL;
   document.getElementById('sheets-url-input').value = url;
 
-  // Busca dados atualizados do Sheets ao abrir e a cada 5 minutos
+  // Busca dados atualizados do Sheets ao abrir e a cada 1 minuto
   buscarAliquota();
-  setInterval(buscarAliquota, 5 * 60 * 1000);
+  setInterval(buscarAliquota, 10 * 1000);
 
   // Projeção dinâmica conforme o usuário digita
   document.getElementById('valor-bruto').addEventListener('input', atualizarAliquotaProjetada);
